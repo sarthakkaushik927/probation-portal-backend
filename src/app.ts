@@ -3,6 +3,15 @@ import cors from 'cors';
 import authRouter from './routes/auth';
 import userRouter from './routes/user';
 import adminRouter from './routes/admin';
+import { User } from '@prisma/client';
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+    }
+  }
+}
 
 export function createApp() {
   const app = express();
