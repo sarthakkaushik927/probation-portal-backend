@@ -61,7 +61,7 @@ export const broadcastNotification = async (req: Request, res: Response) => {
     
     // In a real app, use createMany for performance
     const notifications = await prisma.notification.createMany({
-      data: allUsers.map(user => ({
+      data: allUsers.map((user: any) => ({
         title,
         message,
         type: 'MANUAL',

@@ -77,7 +77,7 @@ export async function submitTask(req: Request, res: Response) {
       const userName = req.user?.name || 'A user';
       if (admins.length > 0) {
         await prisma.notification.createMany({
-          data: admins.map(admin => ({
+          data: admins.map((admin: any) => ({
             userId: admin.id,
             title: 'New Task Submission',
             message: `${userName} just submitted a task.`,
