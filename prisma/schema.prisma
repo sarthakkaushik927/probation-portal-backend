@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum Domain {
+  FRONTEND
+  BACKEND
+  APP
+  UIUX
+  CLOUD
+  ML
+  COMMON
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+}
+
+model User {
+  id          String   @id @default(cuid())
+  name        String?
+  email       String   @unique
+  password    String
+  role        Role     @default(USER)
+  domain      Domain?
+  isVerified  Boolean  @default(false)
+  attendance  Attendance[]
+  submissions Submission[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  domain      Domain
+  deadline    DateTime
+  submissions Submission[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([title, domain])
+}
+
+model Submission {
+  id         String           @id @default(cuid())
+  githubLink String
+  demoLink   String
+  remarks    String?
+  status     SubmissionStatus @default(PENDING)
+  userId     String
+  taskId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task       Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+}
+
+model OTP {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Attendance {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
+  status    AttendanceStatus
+  createdAt DateTime         @default(now())
+  @@unique([userId, date])
+}
