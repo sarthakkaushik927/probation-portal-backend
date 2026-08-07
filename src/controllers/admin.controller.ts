@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as AdminService from '../services/admin.service';
 import { sendSuccess, sendError } from '../utils/response.util';
 import { AttendanceStatus } from '@prisma/client';
+import prisma from '../lib/prisma';
 
 export async function getDashboard(_req: Request, res: Response) {
   try {
@@ -153,6 +154,21 @@ export async function saveAttendance(req: Request, res: Response) {
     }
 
     await AdminService.saveAttendanceRecords(date, records);
+    
+    // Trigger notifications for all users whose attendance was saved
+    try {
+      const dateString = new Date(date).toDateString();
+      const notificationData = records.map(record => ({
+        userId: record.userId,
+        title: 'Attendance Marked',
+        message: `Your attendance has been marked as ${record.status} for ${dateString}.`,
+        type: 'ATTENDANCE',
+      }));
+      await prisma.notification.createMany({ data: notificationData });
+    } catch (notifError) {
+      console.error('Failed to send attendance notifications', notifError);
+    }
+
     sendSuccess(res, {});
   } catch {
     sendError(res, 'Failed to save attendance');

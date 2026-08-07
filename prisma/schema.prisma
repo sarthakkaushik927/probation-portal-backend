@@ -41,11 +41,12 @@ model User {
   password    String
   role        Role     @default(USER)
   domain      Domain?
-  isVerified  Boolean  @default(false)
-  attendance  Attendance[]
-  submissions Submission[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isVerified    Boolean        @default(false)
+  attendance    Attendance[]
+  submissions   Submission[]
+  notifications Notification[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model Task {
@@ -90,4 +91,15 @@ model Attendance {
   status    AttendanceStatus
   createdAt DateTime         @default(now())
   @@unique([userId, date])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      String   @default("GENERAL")
+  isRead    Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }

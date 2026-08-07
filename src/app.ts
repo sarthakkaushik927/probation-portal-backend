@@ -3,6 +3,7 @@ import cors from 'cors';
 import authRouter from './routes/auth';
 import userRouter from './routes/user';
 import adminRouter from './routes/admin';
+import notificationRouter from './routes/notification';
 
 export function createApp() {
   const app = express();
@@ -17,6 +18,7 @@ export function createApp() {
   app.use('/api/auth', authRouter);
   app.use('/api/user', userRouter);
   app.use('/api/admin', adminRouter);
+  app.use('/api/notifications', notificationRouter);
 
   return app;
 }

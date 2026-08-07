@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as UserService from '../services/user.service';
 import { sendSuccess, sendError } from '../utils/response.util';
+import prisma from '../lib/prisma';
 
 export async function getMe(req: Request, res: Response) {
   try {
@@ -69,6 +70,24 @@ export async function submitTask(req: Request, res: Response) {
       demoLink,
       remarks
     );
+
+    // Notify admins
+    try {
+      const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } });
+      const userName = req.user?.name || 'A user';
+      if (admins.length > 0) {
+        await prisma.notification.createMany({
+          data: admins.map(admin => ({
+            userId: admin.id,
+            title: 'New Task Submission',
+            message: `${userName} just submitted a task.`,
+            type: 'SUBMISSION'
+          }))
+        });
+      }
+    } catch (notifErr) {
+      console.error('Failed to send submission notifications', notifErr);
+    }
 
     sendSuccess(res, {}, 201);
   } catch (error) {
