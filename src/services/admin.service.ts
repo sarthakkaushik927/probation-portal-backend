@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { Domain, AttendanceStatus } from '@prisma/client';
+import { sendPushNotification } from './notification.service';
 
 export async function getDashboardStats() {
   const [totalUsers, activeTasks, pendingReviews] = await Promise.all([
@@ -91,19 +92,17 @@ export async function createTask(
     select: { expoPushToken: true }
   });
 
-  const tokens = users.map(u => u.expoPushToken!).filter(token => Expo.isExpoPushToken(token));
-  if (tokens.length > 0) {
-    const messages = tokens.map(token => ({
+  const pushTokens = users.map(u => u.expoPushToken!).filter(token => token && typeof token === 'string' && (token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[')));
+  if (pushTokens.length > 0) {
+    const messages = pushTokens.map(token => ({
       to: token,
       sound: 'default' as 'default',
       title: 'New Task Assigned 📋',
       body: `A new task "${title}" has been assigned to your domain.`,
     }));
     try {
-      const expo = new Expo();
-      const chunks = expo.chunkPushNotifications(messages);
-      for (const chunk of chunks) {
-        await expo.sendPushNotificationsAsync(chunk);
+      for (const msg of messages) {
+        await sendPushNotification(msg.to, msg.title, msg.body);
       }
     } catch (e) {
       console.error(e);
@@ -152,16 +151,12 @@ export async function approveSubmission(submissionId: string) {
     include: { user: true, task: true }
   });
 
-  if (submission.user.expoPushToken && Expo.isExpoPushToken(submission.user.expoPushToken)) {
-    try {
-      const expo = new Expo();
-      await expo.sendPushNotificationsAsync([{
-        to: submission.user.expoPushToken,
-        sound: 'default',
-        title: 'Submission Approved! ✅',
-        body: `Your submission for "${submission.task.title}" was approved.`,
-      }]);
-    } catch (e) { console.error(e); }
+  if (submission.user.expoPushToken) {
+    await sendPushNotification(
+      submission.user.expoPushToken, 
+      'Submission Approved! ✅', 
+      `Your submission for "${submission.task.title}" was approved.`
+    );
   }
 }
 
@@ -172,16 +167,12 @@ export async function rejectSubmission(submissionId: string) {
     include: { user: true, task: true }
   });
 
-  if (submission.user.expoPushToken && Expo.isExpoPushToken(submission.user.expoPushToken)) {
-    try {
-      const expo = new Expo();
-      await expo.sendPushNotificationsAsync([{
-        to: submission.user.expoPushToken,
-        sound: 'default',
-        title: 'Submission Rejected ❌',
-        body: `Your submission for "${submission.task.title}" needs work.`,
-      }]);
-    } catch (e) { console.error(e); }
+  if (submission.user.expoPushToken) {
+    await sendPushNotification(
+      submission.user.expoPushToken, 
+      'Submission Rejected ❌', 
+      `Your submission for "${submission.task.title}" needs work.`
+    );
   }
 }
 
