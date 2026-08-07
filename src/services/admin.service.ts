@@ -129,11 +129,21 @@ export async function rejectSubmission(submissionId: string) {
   });
 }
 
-export async function getAttendanceUsers() {
+export async function getAttendanceUsers(date?: string) {
   return prisma.user.findMany({
     where: { role: 'USER' },
     orderBy: { name: 'asc' },
-    select: { id: true, name: true, email: true, domain: true },
+    select: { 
+      id: true, 
+      name: true, 
+      email: true, 
+      domain: true,
+      attendance: date ? {
+        where: {
+          date: new Date(new Date(date).setUTCHours(0,0,0,0))
+        }
+      } : false
+    },
   });
 }
 
@@ -141,18 +151,19 @@ export async function saveAttendanceRecords(
   date: string,
   records: { userId: string; status: AttendanceStatus }[]
 ) {
+  const normalizedDate = new Date(new Date(date).setUTCHours(0,0,0,0));
   for (const record of records) {
     await prisma.attendance.upsert({
       where: {
         userId_date: {
           userId: record.userId,
-          date: new Date(date),
+          date: normalizedDate,
         },
       },
       update: { status: record.status },
       create: {
         userId: record.userId,
-        date: new Date(date),
+        date: normalizedDate,
         status: record.status,
       },
     });

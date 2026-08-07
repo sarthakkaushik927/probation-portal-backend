@@ -132,9 +132,10 @@ export async function rejectSubmission(req: Request, res: Response) {
   }
 }
 
-export async function getAttendanceUsers(_req: Request, res: Response) {
+export async function getAttendanceUsers(req: Request, res: Response) {
   try {
-    const users = await AdminService.getAttendanceUsers();
+    const date = req.query.date as string | undefined;
+    const users = await AdminService.getAttendanceUsers(date);
     sendSuccess(res, users);
   } catch {
     sendError(res, 'Failed to fetch users');
