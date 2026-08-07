@@ -25,13 +25,33 @@ export async function sendMessage(req: Request, res: Response) {
       return sendError(res, 'Content is required', 400);
     }
 
+    console.log('ChatController: sendMessage called by', userId, 'content length', content.length);
+
+    // Ensure the user exists in local DB (token may reference production user)
+    try {
+      const existing = await prisma.user.findUnique({ where: { id: userId } });
+      if (!existing) {
+        console.log('ChatController: user not found locally, creating placeholder user', userId);
+        await prisma.user.create({ data: {
+          id: userId,
+          email: `${userId}@local.test`,
+          password: 'local-placeholder',
+          name: req.user?.name || 'Local User'
+        } });
+      }
+    } catch (e) {
+      console.warn('ChatController: failed to ensure local user exists:', e);
+    }
+
     const message = await saveMessage(userId, content);
+    console.log('ChatController: message saved id=', message.id);
 
     // Broadcast to the global 'global-chat' channel
     await broadcast('global-chat', 'new_message', message);
 
     // Detect @mentions (simple @username pattern) and notify mentioned users
     try {
+      console.log('ChatController: processing mentions for message', message.id);
       const mentionMatches = Array.from(content.matchAll(/@(\w+)/g)).map(m => m[1]);
       if (mentionMatches.length > 0) {
         // For each unique mention, find the user (case-insensitive match on name)
@@ -72,10 +92,13 @@ export async function sendMessage(req: Request, res: Response) {
 
         // Wait for DB notifications to be created (non-blocking to client response)
         Promise.allSettled(notifyPromises).then(() => {}).catch(() => {});
+        console.log('ChatController: mention notification promises scheduled for', uniqueNames);
       }
     } catch (err) {
       console.error('Mention processing error:', err);
     }
+
+    console.log('ChatController: finished sendMessage for', message.id);
 
     sendSuccess(res, message);
   } catch (error) {

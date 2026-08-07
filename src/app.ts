@@ -23,6 +23,8 @@ export function createApp() {
   app.use('/api/notifications', notificationRouter);
   app.use('/api/submissions', submissionRouter);
   app.use('/api/chat', chatRouter);
+  // Backwards-compatibility: accept requests to /chat (no /api prefix)
+  app.use('/chat', chatRouter);
 
   return app;
 }
