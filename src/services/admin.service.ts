@@ -23,6 +23,11 @@ export async function getAllUsers() {
       domain: true,
       isVerified: true,
       createdAt: true,
+      studentType: true,
+      phoneNumber: true,
+      _count: {
+        select: { submissions: true, attendance: true }
+      }
     },
   });
 }

@@ -5,6 +5,7 @@ import userRouter from './routes/user';
 import adminRouter from './routes/admin';
 import notificationRouter from './routes/notification';
 import submissionRouter from './routes/submission';
+import chatRouter from './routes/chat';
 
 export function createApp() {
   const app = express();
@@ -21,6 +22,7 @@ export function createApp() {
   app.use('/api/admin', adminRouter);
   app.use('/api/notifications', notificationRouter);
   app.use('/api/submissions', submissionRouter);
+  app.use('/api/chat', chatRouter);
 
   return app;
 }

@@ -62,6 +62,7 @@ model User {
   submissions   Submission[]
   notifications Notification[]
   comments      Comment[]
+  messages      Message[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -130,4 +131,12 @@ model Notification {
   userId    String?
   user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime         @default(now())
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
