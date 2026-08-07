@@ -13,7 +13,8 @@ router.get('/submissions', UserController.getSubmissions);
 router.post('/submissions', UserController.submitTask);
 router.put('/submissions', UserController.updateSubmission);
 router.get('/attendance', UserController.getAttendance);
-router.post('/password', UserController.updatePassword);
+router.put('/change-password', UserController.updatePassword);
+router.put('/profile', UserController.updateProfile);
 router.patch('/avatar', UserController.updateAvatar);
 router.patch('/push-token', UserController.savePushToken);
 

@@ -66,6 +66,21 @@ export async function createTask(req: Request, res: Response) {
     }
 
     const task = await AdminService.createTask(title, description, domain, deadline);
+    
+    // Notify users in the domain
+    try {
+      const usersInDomain = await prisma.user.findMany({ where: { domain } });
+      const notificationData = usersInDomain.map(user => ({
+        userId: user.id,
+        title: 'New Task Assigned',
+        body: `A new task "${title}" has been assigned to your domain.`,
+        type: 'TASK_ASSIGNED' as const,
+      }));
+      await prisma.notification.createMany({ data: notificationData });
+    } catch (notifError) {
+      console.error('Failed to send task notifications', notifError);
+    }
+
     sendSuccess(res, task, 201);
   } catch {
     sendError(res, 'Failed to create task');
@@ -117,6 +132,23 @@ export async function getSubmission(req: Request, res: Response) {
 export async function approveSubmission(req: Request, res: Response) {
   try {
     await AdminService.approveSubmission(req.params.submissionId);
+    
+    try {
+      const submission = await prisma.submission.findUnique({ where: { id: req.params.submissionId }, include: { task: true } });
+      if (submission) {
+        await prisma.notification.create({
+          data: {
+            userId: submission.userId,
+            title: 'Submission Approved',
+            body: `Your submission for "${submission.task.title}" has been approved.`,
+            type: 'SUBMISSION_STATUS' as const,
+          }
+        });
+      }
+    } catch (notifError) {
+      console.error('Failed to send submission notification', notifError);
+    }
+
     sendSuccess(res, {});
   } catch {
     sendError(res, 'Failed to approve submission');
@@ -126,6 +158,23 @@ export async function approveSubmission(req: Request, res: Response) {
 export async function rejectSubmission(req: Request, res: Response) {
   try {
     await AdminService.rejectSubmission(req.params.submissionId);
+    
+    try {
+      const submission = await prisma.submission.findUnique({ where: { id: req.params.submissionId }, include: { task: true } });
+      if (submission) {
+        await prisma.notification.create({
+          data: {
+            userId: submission.userId,
+            title: 'Submission Rejected',
+            body: `Your submission for "${submission.task.title}" has been rejected.`,
+            type: 'SUBMISSION_STATUS' as const,
+          }
+        });
+      }
+    } catch (notifError) {
+      console.error('Failed to send submission notification', notifError);
+    }
+
     sendSuccess(res, {});
   } catch {
     sendError(res, 'Failed to reject submission');
@@ -162,8 +211,8 @@ export async function saveAttendance(req: Request, res: Response) {
       const notificationData = records.map(record => ({
         userId: record.userId,
         title: 'Attendance Marked',
-        message: `Your attendance has been marked as ${record.status} for ${dateString}.`,
-        type: 'ATTENDANCE',
+        body: `Your attendance has been marked as ${record.status} for ${dateString}.`,
+        type: 'ATTENDANCE' as const,
       }));
       await prisma.notification.createMany({ data: notificationData });
     } catch (notifError) {
@@ -173,5 +222,151 @@ export async function saveAttendance(req: Request, res: Response) {
     sendSuccess(res, {});
   } catch {
     sendError(res, 'Failed to save attendance');
+  }
+}
+
+export async function deleteUser(req: Request, res: Response) {
+  try {
+    const { userId } = req.params;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      sendError(res, 'User not found', 404);
+      return;
+    }
+    if (user.role === 'ADMIN') {
+      sendError(res, 'Cannot delete an admin user', 403);
+      return;
+    }
+    await prisma.user.delete({ where: { id: userId } });
+    sendSuccess(res, { message: 'User deleted successfully' });
+  } catch {
+    sendError(res, 'Failed to delete user');
+  }
+}
+
+export async function exportAttendanceCSV(req: Request, res: Response) {
+  try {
+    const records = await prisma.attendance.findMany({
+      include: { user: { select: { name: true, email: true, domain: true } } },
+      orderBy: { date: 'desc' }
+    });
+
+    const header = 'Date,Student Name,Email,Domain,Status';
+    const rows = records.map(r => {
+      const date = new Date(r.date).toISOString().split('T')[0];
+      const name = (r.user.name || '').replace(/,/g, ' ');
+      const email = r.user.email;
+      const domain = r.user.domain || '';
+      return `${date},${name},${email},${domain},${r.status}`;
+    });
+
+    const csv = [header, ...rows].join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=attendance.csv');
+    res.send(csv);
+  } catch {
+    sendError(res, 'Failed to export attendance');
+  }
+}
+
+export async function exportSubmissionsCSV(req: Request, res: Response) {
+  try {
+    const submissions = await prisma.submission.findMany({
+      include: {
+        user: { select: { name: true, email: true, domain: true } },
+        task: { select: { title: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const header = 'Task Title,Student Name,Email,Domain,Status,GitHub Link,Demo Link,Date';
+    const rows = submissions.map(s => {
+      const date = new Date(s.createdAt).toISOString().split('T')[0];
+      const name = (s.user.name || '').replace(/,/g, ' ');
+      const taskTitle = s.task.title.replace(/,/g, ' ');
+      return `${taskTitle},${name},${s.user.email},${s.user.domain || ''},${s.status},${s.githubLink},${s.demoLink},${date}`;
+    });
+
+    const csv = [header, ...rows].join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=submissions.csv');
+    res.send(csv);
+  } catch {
+    sendError(res, 'Failed to export submissions');
+  }
+}
+
+export async function exportUsersCSV(req: Request, res: Response) {
+  try {
+    const userIds = req.query.userIds as string | undefined;
+    const where: any = {};
+    if (userIds) {
+      where.id = { in: userIds.split(',') };
+    }
+
+    const users = await prisma.user.findMany({
+      where,
+      select: {
+        id: true, name: true, email: true, role: true, domain: true,
+        isVerified: true, createdAt: true,
+        _count: { select: { submissions: true, attendance: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const header = 'Name,Email,Role,Domain,Verified,Submissions,Attendance Records,Joined';
+    const rows = users.map(u => {
+      const date = new Date(u.createdAt).toISOString().split('T')[0];
+      const name = (u.name || '').replace(/,/g, ' ');
+      return `${name},${u.email},${u.role},${u.domain || ''},${u.isVerified},${u._count.submissions},${u._count.attendance},${date}`;
+    });
+
+    const csv = [header, ...rows].join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=users.csv');
+    res.send(csv);
+  } catch {
+    sendError(res, 'Failed to export users');
+  }
+}
+
+export async function exportUserDataCSV(req: Request, res: Response) {
+  try {
+    const { userId } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        attendance: { orderBy: { date: 'desc' } },
+        submissions: { include: { task: true }, orderBy: { createdAt: 'desc' } }
+      }
+    });
+
+    if (!user) {
+      sendError(res, 'User not found', 404);
+      return;
+    }
+
+    let csv = `User Report: ${user.name || user.email}\n`;
+    csv += `Email,${user.email}\n`;
+    csv += `Role,${user.role}\n`;
+    csv += `Domain,${user.domain || 'N/A'}\n`;
+    csv += `Joined,${new Date(user.createdAt).toISOString().split('T')[0]}\n\n`;
+
+    csv += `ATTENDANCE\nDate,Status\n`;
+    user.attendance.forEach(a => {
+      csv += `${new Date(a.date).toISOString().split('T')[0]},${a.status}\n`;
+    });
+
+    csv += `\nSUBMISSIONS\nTask,Status,GitHub,Demo,Date\n`;
+    user.submissions.forEach(s => {
+      const date = new Date(s.createdAt).toISOString().split('T')[0];
+      csv += `${s.task.title.replace(/,/g, ' ')},${s.status},${s.githubLink},${s.demoLink},${date}\n`;
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=user_${userId}.csv`);
+    res.send(csv);
+  } catch {
+    sendError(res, 'Failed to export user data');
   }
 }

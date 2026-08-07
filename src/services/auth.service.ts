@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma';
 import { generateOTP, isExpired } from '../utils/otp.util';
 import { sendOTPEmail } from './email.service';
 
-export async function signupUser(name: string, email: string, password: string) {
+export async function signupUser(name: string, email: string, password: string, studentType?: any, phoneNumber?: string) {
   const existing = await prisma.user.findUnique({ where: { email } });
 
   if (existing) {
@@ -14,7 +14,7 @@ export async function signupUser(name: string, email: string, password: string) 
   const hashedPassword = await bcrypt.hash(password, 10);
 
   await prisma.user.create({
-    data: { name, email, password: hashedPassword },
+    data: { name, email, password: hashedPassword, studentType, phoneNumber },
   });
 }
 

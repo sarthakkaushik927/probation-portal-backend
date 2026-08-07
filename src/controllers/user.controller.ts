@@ -80,8 +80,8 @@ export async function submitTask(req: Request, res: Response) {
           data: admins.map((admin: any) => ({
             userId: admin.id,
             title: 'New Task Submission',
-            message: `${userName} just submitted a task.`,
-            type: 'SUBMISSION'
+            body: `${userName} just submitted a task.`,
+            type: 'SUBMISSION_STATUS' as const
           }))
         });
       }
@@ -133,15 +133,27 @@ export async function getAttendance(req: Request, res: Response) {
 
 export async function updatePassword(req: Request, res: Response) {
   try {
-    const { newPassword } = req.body;
-    if (!newPassword) {
-      sendError(res, 'New password is required', 400);
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      sendError(res, 'Current password and new password are required', 400);
       return;
     }
-    await UserService.updatePassword(req.user!.id, newPassword);
+    await UserService.changePassword(req.user!.id, currentPassword, newPassword);
     sendSuccess(res, { message: 'Password updated successfully' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update password';
+    const statusCode = message === 'Incorrect current password' ? 401 : 500;
+    sendError(res, message, statusCode);
+  }
+}
+
+export async function updateProfile(req: Request, res: Response) {
+  try {
+    const { name, avatarData } = req.body;
+    await UserService.updateProfile(req.user!.id, name, avatarData);
+    sendSuccess(res, { message: 'Profile updated successfully' });
   } catch {
-    sendError(res, 'Failed to update password');
+    sendError(res, 'Failed to update profile');
   }
 }
 

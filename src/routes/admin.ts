@@ -12,6 +12,7 @@ router.get('/dashboard', AdminController.getDashboard);
 router.get('/users', AdminController.getUsers);
 router.get('/users/:userId', AdminController.getUser);
 router.patch('/users/:userId/domain', AdminController.updateDomain);
+router.delete('/users/:userId', AdminController.deleteUser);
 
 router.get('/tasks', AdminController.getTasks);
 router.post('/tasks', AdminController.createTask);
@@ -24,5 +25,11 @@ router.patch('/submissions/:submissionId/reject', AdminController.rejectSubmissi
 
 router.get('/attendance', AdminController.getAttendanceUsers);
 router.post('/attendance', AdminController.saveAttendance);
+
+// Export CSV
+router.get('/export/attendance', AdminController.exportAttendanceCSV);
+router.get('/export/submissions', AdminController.exportSubmissionsCSV);
+router.get('/export/users', AdminController.exportUsersCSV);
+router.get('/export/users/:userId', AdminController.exportUserDataCSV);
 
 export default router;

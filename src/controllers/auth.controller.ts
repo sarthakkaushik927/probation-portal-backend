@@ -4,14 +4,14 @@ import { sendSuccess, sendError } from '../utils/response.util';
 
 export async function signup(req: Request, res: Response) {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, studentType, phoneNumber } = req.body;
 
     if (!email || !password) {
       sendError(res, 'Email and password are required', 400);
       return;
     }
 
-    await AuthService.signupUser(name, email, password);
+    await AuthService.signupUser(name, email, password, studentType, phoneNumber);
     sendSuccess(res, {}, 201);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Signup failed';

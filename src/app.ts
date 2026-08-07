@@ -4,6 +4,7 @@ import authRouter from './routes/auth';
 import userRouter from './routes/user';
 import adminRouter from './routes/admin';
 import notificationRouter from './routes/notification';
+import submissionRouter from './routes/submission';
 
 export function createApp() {
   const app = express();
@@ -19,6 +20,7 @@ export function createApp() {
   app.use('/api/user', userRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/notifications', notificationRouter);
+  app.use('/api/submissions', submissionRouter);
 
   return app;
 }

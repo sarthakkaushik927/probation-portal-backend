@@ -22,6 +22,11 @@ enum Domain {
   COMMON
 }
 
+enum StudentType {
+  HOSTELER
+  DAY_SCHOLAR
+}
+
 enum SubmissionStatus {
   PENDING
   APPROVED
@@ -34,6 +39,13 @@ enum AttendanceStatus {
   LEAVE
 }
 
+enum NotificationType {
+  BROADCAST
+  TASK_ASSIGNED
+  SUBMISSION_STATUS
+  ATTENDANCE
+}
+
 model User {
   id          String   @id @default(cuid())
   name        String?
@@ -43,10 +55,13 @@ model User {
   domain      Domain?
   avatarData  String?
   expoPushToken String?
+  phoneNumber String?
+  studentType StudentType?
   isVerified  Boolean        @default(false)
   attendance    Attendance[]
   submissions   Submission[]
   notifications Notification[]
+  comments      Comment[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -73,8 +88,19 @@ model Submission {
   taskId     String
   user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   task       Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  comments   Comment[]
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
+}
+
+model Comment {
+  id           String     @id @default(cuid())
+  message      String
+  submissionId String
+  userId       String
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
 }
 
 model OTP {
@@ -96,12 +122,12 @@ model Attendance {
 }
 
 model Notification {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   title     String
-  message   String
-  type      String   @default("GENERAL")
-  isRead    Boolean  @default(false)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  body      String
+  type      NotificationType @default(BROADCAST)
+  isRead    Boolean          @default(false)
+  userId    String?
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
 }

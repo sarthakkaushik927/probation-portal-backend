@@ -5,7 +5,7 @@ import { Domain } from '@prisma/client';
 export async function getMe(userId: string) {
   return prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, email: true, role: true, domain: true },
+    select: { id: true, name: true, email: true, role: true, domain: true, avatarData: true },
   });
 }
 
@@ -124,9 +124,34 @@ export async function updatePassword(userId: string, newPassword: string) {
   });
 }
 
+export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error('User not found');
+
+  const isValid = await bcrypt.compare(currentPassword, user.password);
+  if (!isValid) throw new Error('Incorrect current password');
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { password: hashedPassword },
+  });
+}
+
 export async function updateAvatar(userId: string, avatarData: string) {
   await prisma.user.update({
     where: { id: userId },
     data: { avatarData },
+  });
+}
+
+export async function updateProfile(userId: string, name?: string, avatarData?: string) {
+  const data: any = {};
+  if (name !== undefined) data.name = name;
+  if (avatarData !== undefined) data.avatarData = avatarData;
+
+  await prisma.user.update({
+    where: { id: userId },
+    data,
   });
 }
