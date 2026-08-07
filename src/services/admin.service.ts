@@ -1,6 +1,5 @@
 import { prisma } from '../lib/prisma';
 import { Domain, AttendanceStatus } from '@prisma/client';
-import { Expo } from 'expo-server-sdk';
 
 export async function getDashboardStats() {
   const [totalUsers, activeTasks, pendingReviews] = await Promise.all([
