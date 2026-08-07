@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma';
+import bcrypt from 'bcryptjs';
 import { Domain } from '@prisma/client';
 
 export async function getMe(userId: string) {
@@ -58,7 +59,42 @@ export async function createSubmission(
   }
 
   return prisma.submission.create({
-    data: { taskId, userId, githubLink, demoLink, remarks: remarks || null },
+    data: {
+      userId,
+      taskId,
+      githubLink,
+      demoLink,
+      remarks,
+    },
+  });
+}
+
+export async function updateSubmission(
+  userId: string,
+  taskId: string,
+  githubLink: string,
+  demoLink: string,
+  remarks?: string
+) {
+  const existing = await prisma.submission.findFirst({
+    where: { taskId, userId },
+  });
+
+  if (!existing) {
+    throw new Error('Submission not found');
+  }
+
+  if (existing.status !== 'PENDING') {
+    throw new Error('Only pending submissions can be edited');
+  }
+
+  return prisma.submission.update({
+    where: { id: existing.id },
+    data: {
+      githubLink,
+      demoLink,
+      remarks,
+    },
   });
 }
 
@@ -78,4 +114,19 @@ export async function getUserAttendance(userId: string) {
     records,
     stats: { total, present, absent, leave, attendanceRate },
   };
+}
+
+export async function updatePassword(userId: string, newPassword: string) {
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { password: hashedPassword },
+  });
+}
+
+export async function updateAvatar(userId: string, avatarData: string) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { avatarData },
+  });
 }

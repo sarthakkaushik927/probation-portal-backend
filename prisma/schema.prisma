@@ -41,7 +41,9 @@ model User {
   password    String
   role        Role     @default(USER)
   domain      Domain?
-  isVerified    Boolean        @default(false)
+  avatarData  String?
+  expoPushToken String?
+  isVerified  Boolean        @default(false)
   attendance    Attendance[]
   submissions   Submission[]
   notifications Notification[]

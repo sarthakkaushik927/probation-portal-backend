@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { broadcastPushNotification } from '../services/notification.service';
 
 export const getNotifications = async (req: Request, res: Response) => {
   try {
@@ -68,6 +69,9 @@ export const broadcastNotification = async (req: Request, res: Response) => {
         userId: user.id
       }))
     });
+
+    // Send push notifications
+    await broadcastPushNotification(title, message, { type: 'MANUAL' });
 
     res.json({ message: `Broadcast sent to ${notifications.count} users` });
   } catch (error) {

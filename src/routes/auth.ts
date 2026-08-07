@@ -1,12 +1,14 @@
 import { Router } from 'express';
-import * as AuthController from '../controllers/auth.controller';
+import { signup, login, sendOTP, verifyOTP, resendOTP, forgotPassword, resetPassword } from '../controllers/auth.controller';
 
 const router = Router();
 
-router.post('/signup', AuthController.signup);
-router.post('/login', AuthController.login);
-router.post('/send-otp', AuthController.sendOTP);
-router.post('/verify-otp', AuthController.verifyOTP);
-router.post('/resend-otp', AuthController.resendOTP);
+router.post('/signup', signup);
+router.post('/login', login);
+router.post('/send-otp', sendOTP);
+router.post('/verify-otp', verifyOTP);
+router.post('/resend-otp', resendOTP);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 export default router;

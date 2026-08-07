@@ -89,3 +89,26 @@ export async function verifyOTP(email: string, otp: string) {
 
   await prisma.oTP.deleteMany({ where: { email } });
 }
+
+export async function resetPasswordWithOTP(email: string, otp: string, newPassword: string) {
+  const record = await prisma.oTP.findFirst({
+    where: { email, code: otp },
+  });
+
+  if (!record) {
+    throw new Error('Invalid OTP');
+  }
+
+  if (isExpired(record.expiresAt)) {
+    throw new Error('OTP has expired. Please request a new one.');
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  await prisma.user.update({
+    where: { email },
+    data: { password: hashedPassword, isVerified: true },
+  });
+
+  await prisma.oTP.deleteMany({ where: { email } });
+}

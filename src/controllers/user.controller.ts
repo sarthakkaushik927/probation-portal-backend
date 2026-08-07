@@ -97,11 +97,81 @@ export async function submitTask(req: Request, res: Response) {
   }
 }
 
+export async function updateSubmission(req: Request, res: Response) {
+  try {
+    const { taskId, githubLink, demoLink, remarks } = req.body;
+
+    if (!taskId || !githubLink || !demoLink) {
+      sendError(res, 'taskId, githubLink, and demoLink are required', 400);
+      return;
+    }
+
+    await UserService.updateSubmission(
+      req.user!.id,
+      taskId,
+      githubLink,
+      demoLink,
+      remarks
+    );
+
+    sendSuccess(res, {}, 200);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update submission';
+    const statusCode = message.includes('not found') ? 404 : (message.includes('Only pending') ? 400 : 500);
+    sendError(res, message, statusCode);
+  }
+}
+
 export async function getAttendance(req: Request, res: Response) {
   try {
     const data = await UserService.getUserAttendance(req.user!.id);
     sendSuccess(res, data);
   } catch {
     sendError(res, 'Failed to fetch attendance');
+  }
+}
+
+export async function updatePassword(req: Request, res: Response) {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword) {
+      sendError(res, 'New password is required', 400);
+      return;
+    }
+    await UserService.updatePassword(req.user!.id, newPassword);
+    sendSuccess(res, { message: 'Password updated successfully' });
+  } catch {
+    sendError(res, 'Failed to update password');
+  }
+}
+
+export async function updateAvatar(req: Request, res: Response) {
+  try {
+    const { avatarData } = req.body;
+    if (!avatarData) {
+      sendError(res, 'Avatar data is required', 400);
+      return;
+    }
+    await UserService.updateAvatar(req.user!.id, avatarData);
+    sendSuccess(res, { message: 'Avatar updated successfully' });
+  } catch {
+    sendError(res, 'Failed to update avatar');
+  }
+}
+
+export async function savePushToken(req: Request, res: Response) {
+  try {
+    const { pushToken } = req.body;
+    if (!pushToken) {
+      sendError(res, 'Push token is required', 400);
+      return;
+    }
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { expoPushToken: pushToken },
+    });
+    sendSuccess(res, { message: 'Push token saved successfully' });
+  } catch {
+    sendError(res, 'Failed to save push token');
   }
 }

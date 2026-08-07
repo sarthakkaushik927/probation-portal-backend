@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { Domain, AttendanceStatus } from '@prisma/client';
+import { Expo } from 'expo-server-sdk';
 
 export async function getDashboardStats() {
   const [totalUsers, activeTasks, pendingReviews] = await Promise.all([
@@ -73,7 +74,7 @@ export async function createTask(
   domain: string,
   deadline: string
 ) {
-  return prisma.task.create({
+  const task = await prisma.task.create({
     data: {
       title,
       description,
@@ -81,6 +82,36 @@ export async function createTask(
       deadline: new Date(deadline),
     },
   });
+
+  // Send push notification to users in this domain (or all if COMMON)
+  const users = await prisma.user.findMany({
+    where: {
+      ...(domain !== 'COMMON' ? { domain: domain as Domain } : {}),
+      expoPushToken: { not: null }
+    },
+    select: { expoPushToken: true }
+  });
+
+  const tokens = users.map(u => u.expoPushToken!).filter(token => Expo.isExpoPushToken(token));
+  if (tokens.length > 0) {
+    const messages = tokens.map(token => ({
+      to: token,
+      sound: 'default' as 'default',
+      title: 'New Task Assigned 📋',
+      body: `A new task "${title}" has been assigned to your domain.`,
+    }));
+    try {
+      const expo = new Expo();
+      const chunks = expo.chunkPushNotifications(messages);
+      for (const chunk of chunks) {
+        await expo.sendPushNotificationsAsync(chunk);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  return task;
 }
 
 export async function updateTask(
@@ -116,17 +147,43 @@ export async function getSubmissionById(submissionId: string) {
 }
 
 export async function approveSubmission(submissionId: string) {
-  await prisma.submission.update({
+  const submission = await prisma.submission.update({
     where: { id: submissionId },
     data: { status: 'APPROVED' },
+    include: { user: true, task: true }
   });
+
+  if (submission.user.expoPushToken && Expo.isExpoPushToken(submission.user.expoPushToken)) {
+    try {
+      const expo = new Expo();
+      await expo.sendPushNotificationsAsync([{
+        to: submission.user.expoPushToken,
+        sound: 'default',
+        title: 'Submission Approved! ✅',
+        body: `Your submission for "${submission.task.title}" was approved.`,
+      }]);
+    } catch (e) { console.error(e); }
+  }
 }
 
 export async function rejectSubmission(submissionId: string) {
-  await prisma.submission.update({
+  const submission = await prisma.submission.update({
     where: { id: submissionId },
     data: { status: 'REJECTED' },
+    include: { user: true, task: true }
   });
+
+  if (submission.user.expoPushToken && Expo.isExpoPushToken(submission.user.expoPushToken)) {
+    try {
+      const expo = new Expo();
+      await expo.sendPushNotificationsAsync([{
+        to: submission.user.expoPushToken,
+        sound: 'default',
+        title: 'Submission Rejected ❌',
+        body: `Your submission for "${submission.task.title}" needs work.`,
+      }]);
+    } catch (e) { console.error(e); }
+  }
 }
 
 export async function getAttendanceUsers(date?: string) {

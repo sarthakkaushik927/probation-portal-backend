@@ -90,3 +90,33 @@ export async function resendOTP(req: Request, res: Response) {
     sendError(res, message, 500);
   }
 }
+
+export async function forgotPassword(req: Request, res: Response) {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      sendError(res, 'Email is required', 400);
+      return;
+    }
+    await AuthService.sendOTP(email);
+    sendSuccess(res, { message: 'OTP sent successfully' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to send OTP';
+    sendError(res, message, 500);
+  }
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      sendError(res, 'Email, OTP, and new password are required', 400);
+      return;
+    }
+    await AuthService.resetPasswordWithOTP(email, otp, newPassword);
+    sendSuccess(res, { message: 'Password reset successfully' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to reset password';
+    sendError(res, message, 400);
+  }
+}
