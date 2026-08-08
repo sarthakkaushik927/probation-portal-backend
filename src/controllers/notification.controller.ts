@@ -76,6 +76,32 @@ export const markAllAsRead = async (req: Request, res: Response) => {
   }
 };
 
+export const deleteNotification = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+    
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const notification = await prisma.notification.findFirst({
+      where: { id, userId }
+    });
+
+    if (!notification) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+
+    await prisma.notification.delete({
+      where: { id }
+    });
+
+    res.json({ message: 'Notification deleted successfully' });
+  } catch (error) {
+    console.error('Delete notification error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 export const broadcastNotification = async (req: Request, res: Response) => {
   try {
     const { title, body } = req.body;

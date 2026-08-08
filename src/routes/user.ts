@@ -7,6 +7,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/me', UserController.getMe);
+router.get('/directory', UserController.getDirectory);
 router.get('/tasks', UserController.getTasks);
 router.get('/tasks/:taskId', UserController.getTask);
 router.get('/submissions', UserController.getSubmissions);

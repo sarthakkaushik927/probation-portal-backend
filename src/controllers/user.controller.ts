@@ -187,3 +187,15 @@ export async function savePushToken(req: Request, res: Response) {
     sendError(res, 'Failed to save push token');
   }
 }
+
+export async function getDirectory(req: Request, res: Response) {
+  try {
+    const users = await prisma.user.findMany({
+      select: { id: true, name: true, avatarData: true },
+      orderBy: { name: 'asc' }
+    });
+    sendSuccess(res, users);
+  } catch (error) {
+    sendError(res, 'Failed to fetch user directory');
+  }
+}
