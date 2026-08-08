@@ -8,12 +8,7 @@ export const getNotifications = async (req: Request, res: Response) => {
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const notifications = await prisma.notification.findMany({
-      where: {
-        OR: [
-          { userId },
-          { userId: null }
-        ]
-      },
+      where: { userId },
       orderBy: { createdAt: 'desc' }
     });
 
@@ -32,27 +27,18 @@ export const markAsRead = async (req: Request, res: Response) => {
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const notification = await prisma.notification.findFirst({
-      where: { id, OR: [{ userId }, { userId: null }] }
+      where: { id, userId }
     });
 
     if (!notification) {
       return res.status(404).json({ error: 'Notification not found' });
     }
 
-    // For broadcasts, a user marking it read should probably track it in a separate table, 
-    // but for simplicity we'll just skip marking broadcasts read if they are global, 
-    // or just let it update if we decide to change the schema later.
-    // Actually, marking a global broadcast as read for a specific user would require a UserNotification read status table.
-    // We'll just update it if it has a userId, otherwise ignore.
-    if (notification.userId) {
-      const updated = await prisma.notification.update({
-        where: { id },
-        data: { isRead: true }
-      });
-      return res.json({ data: updated });
-    }
-
-    res.json({ data: notification, message: 'Broadcast notifications cannot be marked as read individually yet' });
+    const updated = await prisma.notification.update({
+      where: { id },
+      data: { isRead: true }
+    });
+    return res.json({ data: updated });
   } catch (error) {
     console.error('Mark notification read error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -114,19 +100,27 @@ export const broadcastNotification = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Title and body are required' });
     }
 
-    const notification = await prisma.notification.create({
-      data: {
-        title,
-        body,
-        type: 'BROADCAST',
-        userId: null // global broadcast
-      }
+    // Get all users except the sender
+    const users = await prisma.user.findMany({
+      where: { id: { not: req.user?.id } },
+      select: { id: true }
     });
 
-    // Send push notifications
-    await broadcastPushNotification(title, body, { type: 'BROADCAST' });
+    const notificationsData = users.map(u => ({
+      title,
+      body,
+      type: 'BROADCAST' as any,
+      userId: u.id
+    }));
 
-    res.json({ message: `Broadcast sent successfully`, data: notification });
+    await prisma.notification.createMany({
+      data: notificationsData
+    });
+
+    // Send push notifications, excluding sender
+    await broadcastPushNotification(title, body, req.user?.id, { type: 'BROADCAST' });
+
+    res.json({ message: `Broadcast sent successfully` });
   } catch (error) {
     console.error('Broadcast notification error:', error);
     res.status(500).json({ error: 'Internal server error' });

@@ -42,10 +42,11 @@ export async function sendPushNotification(pushToken: string, title: string, bod
   await sendExpoPushTokens(messages);
 }
 
-export async function broadcastPushNotification(title: string, body: string, data: any = {}) {
-  // Get all users with push tokens
+export async function broadcastPushNotification(title: string, body: string, senderId?: string, data: any = {}) {
+  // Get all users with push tokens EXCEPT sender
   const users = await prisma.user.findMany({
     where: {
+      id: senderId ? { not: senderId } : undefined,
       expoPushToken: { not: null },
     },
     select: { expoPushToken: true },
