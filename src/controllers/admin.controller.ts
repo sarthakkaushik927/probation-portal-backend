@@ -58,14 +58,14 @@ export async function getTasks(_req: Request, res: Response) {
 
 export async function createTask(req: Request, res: Response) {
   try {
-    const { title, description, domain, deadline } = req.body;
+    const { title, description, domain, deadline, attachments } = req.body;
 
     if (!title || !description || !domain || !deadline) {
       sendError(res, 'All fields are required', 400);
       return;
     }
 
-    const task = await AdminService.createTask(title, description, domain, deadline);
+    const task = await AdminService.createTask(title, description, domain, deadline, attachments);
     
     // Notify users in the domain
     try {
@@ -89,14 +89,15 @@ export async function createTask(req: Request, res: Response) {
 
 export async function updateTask(req: Request, res: Response) {
   try {
-    const { title, description, domain, deadline } = req.body;
+    const { title, description, domain, deadline, attachments } = req.body;
 
     await AdminService.updateTask(
       req.params.taskId,
       title,
       description,
       domain,
-      deadline
+      deadline,
+      attachments
     );
 
     sendSuccess(res, {});

@@ -74,6 +74,7 @@ model Task {
   domain      Domain
   deadline    DateTime
   submissions Submission[]
+  attachments String[]   @default([])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   @@unique([title, domain])
@@ -90,6 +91,7 @@ model Submission {
   user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   task       Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
   comments   Comment[]
+  attachments String[]        @default([])
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
 }
@@ -138,5 +140,6 @@ model Message {
   content   String
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachments String[] @default([])
   createdAt DateTime @default(now())
 }

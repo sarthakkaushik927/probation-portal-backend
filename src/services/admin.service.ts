@@ -77,7 +77,8 @@ export async function createTask(
   title: string,
   description: string,
   domain: string,
-  deadline: string
+  deadline: string,
+  attachments?: string[]
 ) {
   const task = await prisma.task.create({
     data: {
@@ -85,6 +86,7 @@ export async function createTask(
       description,
       domain: domain as Domain,
       deadline: new Date(deadline),
+      attachments: attachments || [],
     },
   });
 
@@ -122,7 +124,8 @@ export async function updateTask(
   title: string,
   description: string,
   domain: string,
-  deadline: string
+  deadline: string,
+  attachments?: string[]
 ) {
   await prisma.task.update({
     where: { id: taskId },
@@ -131,6 +134,7 @@ export async function updateTask(
       description,
       domain: domain as Domain,
       deadline: new Date(deadline),
+      ...(attachments ? { attachments } : {}),
     },
   });
 }
