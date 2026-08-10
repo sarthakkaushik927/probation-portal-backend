@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { sendSuccess, sendError } from '../utils/response.util';
 import prisma from '../lib/prisma';
+import { sendPushNotification } from '../services/notification.service';
 
 export async function getComments(req: Request, res: Response) {
   try {
@@ -81,8 +82,13 @@ export async function addComment(req: Request, res: Response) {
             type: 'SUBMISSION_STATUS' as const
           }
         });
+
+        const targetUser = await prisma.user.findUnique({ where: { id: submission.userId } });
+        if (targetUser?.expoPushToken) {
+          sendPushNotification(targetUser.expoPushToken, 'New Comment on Submission', 'An admin commented on your submission.', { type: 'SUBMISSION_STATUS' });
+        }
       } else {
-        const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } });
+        const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true, expoPushToken: true } });
         if (admins.length > 0) {
           await prisma.notification.createMany({
             data: admins.map(a => ({
@@ -91,6 +97,12 @@ export async function addComment(req: Request, res: Response) {
               body: `${req.user!.name || 'A user'} commented on a submission.`,
               type: 'SUBMISSION_STATUS' as const
             }))
+          });
+
+          admins.forEach(admin => {
+            if (admin.expoPushToken) {
+              sendPushNotification(admin.expoPushToken, 'New Comment on Submission', `${req.user!.name || 'A user'} commented on a submission.`, { type: 'SUBMISSION_STATUS' });
+            }
           });
         }
       }

@@ -50,6 +50,16 @@ export async function createSubmission(
   demoLink: string,
   remarks?: string
 ) {
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+  if (!task) {
+    throw new Error('Task not found');
+  }
+
+  // Late submissions are allowed, we'll show a badge on the frontend
+  // if (task.deadline && new Date() > new Date(task.deadline)) {
+  //   throw new Error('Deadline passed. Submissions closed.');
+  // }
+
   const existing = await prisma.submission.findFirst({
     where: { taskId, userId },
   });
