@@ -107,11 +107,16 @@ model Comment {
 }
 
 model OTP {
-  id        String   @id @default(cuid())
-  email     String
-  code      String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id          String       @id @default(cuid())
+  email       String
+  code        String
+  expiresAt   DateTime
+  isSignup    Boolean      @default(false)
+  name        String?
+  password    String?
+  studentType StudentType?
+  phoneNumber String?
+  createdAt   DateTime     @default(now())
 }
 
 model Attendance {

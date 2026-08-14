@@ -12,10 +12,26 @@ export async function signupUser(name: string, email: string, password: string, 
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
+  const otp = generateOTP();
 
-  await prisma.user.create({
-    data: { name, email, password: hashedPassword, studentType, phoneNumber },
+  // Delete any previous pending signup OTPs for this email
+  await prisma.oTP.deleteMany({ where: { email } });
+
+  // Store signup data in OTP table (user is NOT created yet)
+  await prisma.oTP.create({
+    data: {
+      email,
+      code: otp,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      isSignup: true,
+      name,
+      password: hashedPassword,
+      studentType,
+      phoneNumber,
+    },
   });
+
+  await sendOTPEmail(email, otp);
 }
 
 export async function loginUser(email: string, password: string) {
@@ -82,10 +98,24 @@ export async function verifyOTP(email: string, otp: string) {
     throw new Error('OTP has expired. Please request a new one.');
   }
 
-  await prisma.user.update({
-    where: { email },
-    data: { isVerified: true },
-  });
+  if (record.isSignup) {
+    // Create the user now that OTP is verified
+    await prisma.user.create({
+      data: {
+        name: record.name,
+        email: record.email,
+        password: record.password!,
+        studentType: record.studentType,
+        phoneNumber: record.phoneNumber,
+        isVerified: true,
+      },
+    });
+  } else {
+    await prisma.user.update({
+      where: { email },
+      data: { isVerified: true },
+    });
+  }
 
   await prisma.oTP.deleteMany({ where: { email } });
 }
