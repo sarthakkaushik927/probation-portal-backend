@@ -109,7 +109,7 @@ export async function createTask(
     }));
     try {
       for (const msg of messages) {
-        await sendPushNotification(msg.to, msg.title, msg.body);
+        await sendPushNotification(msg.to, msg.title, msg.body, { type: 'TASK_ASSIGNED', taskId: task.id, url: '/(user)/tasks' });
       }
     } catch (e) {
       console.error(e);
@@ -164,7 +164,8 @@ export async function approveSubmission(submissionId: string) {
     await sendPushNotification(
       submission.user.expoPushToken, 
       'Submission Approved! ✅', 
-      `Your submission for "${submission.task.title}" was approved.`
+      `Your submission for "${submission.task.title}" was approved.`,
+      { type: 'SUBMISSION_STATUS', submissionId, url: '/(user)/submissions' }
     );
   }
 }
@@ -180,7 +181,8 @@ export async function rejectSubmission(submissionId: string) {
     await sendPushNotification(
       submission.user.expoPushToken, 
       'Submission Rejected ❌', 
-      `Your submission for "${submission.task.title}" needs work.`
+      `Your submission for "${submission.task.title}" needs work.`,
+      { type: 'SUBMISSION_STATUS', submissionId, url: '/(user)/submissions' }
     );
   }
 }
