@@ -122,6 +122,80 @@ export async function updateSubmission(req: Request, res: Response) {
   }
 }
 
+// --- Team Submission Endpoints ---
+
+export async function getTeamSubmission(req: Request, res: Response) {
+  try {
+    const teamSub = await UserService.getTeamSubmission(req.params.taskId, req.user!.id);
+    if (!teamSub) {
+      sendError(res, 'Team submission not found', 404);
+      return;
+    }
+    sendSuccess(res, teamSub);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch team submission';
+    const statusCode = message.includes('not assigned') ? 403 : 500;
+    sendError(res, message, statusCode);
+  }
+}
+
+export async function addTeamLink(req: Request, res: Response) {
+  try {
+    const { taskId } = req.params;
+    const { name, url } = req.body;
+
+    if (!name || !url) {
+      sendError(res, 'name and url are required', 400);
+      return;
+    }
+
+    const updated = await UserService.addTeamSubmissionLink(taskId, req.user!.id, name, url);
+    sendSuccess(res, updated);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to add link';
+    const statusCode = message.includes('not assigned') ? 403 : 500;
+    sendError(res, message, statusCode);
+  }
+}
+
+export async function removeTeamLink(req: Request, res: Response) {
+  try {
+    const { taskId } = req.params;
+    const { index } = req.body;
+
+    if (index === undefined) {
+      sendError(res, 'index is required', 400);
+      return;
+    }
+
+    const updated = await UserService.removeTeamSubmissionLink(taskId, req.user!.id, parseInt(index));
+    sendSuccess(res, updated);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to remove link';
+    const statusCode = message.includes('not assigned') ? 403 : 500;
+    sendError(res, message, statusCode);
+  }
+}
+
+export async function addTeamAttachment(req: Request, res: Response) {
+  try {
+    const { taskId } = req.params;
+    const { url } = req.body;
+
+    if (!url) {
+      sendError(res, 'url is required', 400);
+      return;
+    }
+
+    const updated = await UserService.addTeamSubmissionAttachment(taskId, req.user!.id, url);
+    sendSuccess(res, updated);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to add attachment';
+    const statusCode = message.includes('not assigned') ? 403 : 500;
+    sendError(res, message, statusCode);
+  }
+}
+
 export async function getAttendance(req: Request, res: Response) {
   try {
     const data = await UserService.getUserAttendance(req.user!.id);

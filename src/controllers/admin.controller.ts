@@ -47,6 +47,20 @@ export async function updateDomain(req: Request, res: Response) {
   }
 }
 
+export async function searchUsers(req: Request, res: Response) {
+  try {
+    const query = (req.query.q as string) || '';
+    if (query.length < 1) {
+      sendSuccess(res, []);
+      return;
+    }
+    const users = await AdminService.searchUsers(query);
+    sendSuccess(res, users);
+  } catch {
+    sendError(res, 'Failed to search users');
+  }
+}
+
 export async function getTasks(_req: Request, res: Response) {
   try {
     const tasks = await AdminService.getAllTasks();
@@ -58,32 +72,27 @@ export async function getTasks(_req: Request, res: Response) {
 
 export async function createTask(req: Request, res: Response) {
   try {
-    const { title, description, domain, deadline, attachments } = req.body;
+    const { title, description, domain, deadline, attachments, type, teamName, assignedUserIds } = req.body;
 
     if (!title || !description || !domain || !deadline) {
       sendError(res, 'All fields are required', 400);
       return;
     }
 
-    const task = await AdminService.createTask(title, description, domain, deadline, attachments);
-    
-    // Notify users in the domain
-    try {
-      const usersInDomain = await prisma.user.findMany({ where: { domain } });
-      const notificationData = usersInDomain.map(user => ({
-        userId: user.id,
-        title: 'New Task Assigned',
-        body: `A new task "${title}" has been assigned to your domain.`,
-        type: 'TASK_ASSIGNED' as const,
-      }));
-      await prisma.notification.createMany({ data: notificationData });
-    } catch (notifError) {
-      console.error('Failed to send task notifications', notifError);
+    if (type === 'TEAM' && (!assignedUserIds || assignedUserIds.length === 0)) {
+      sendError(res, 'Team tasks require at least one assigned member', 400);
+      return;
     }
 
+    const task = await AdminService.createTask(
+      title, description, domain, deadline, attachments,
+      type || 'INDIVIDUAL', teamName, assignedUserIds
+    );
+
     sendSuccess(res, task, 201);
-  } catch {
-    sendError(res, 'Failed to create task');
+  } catch (error: any) {
+    const message = error?.message || 'Failed to create task';
+    sendError(res, message);
   }
 }
 
@@ -103,6 +112,48 @@ export async function updateTask(req: Request, res: Response) {
     sendSuccess(res, {});
   } catch {
     sendError(res, 'Failed to update task');
+  }
+}
+
+export async function addTaskMember(req: Request, res: Response) {
+  try {
+    const { taskId } = req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      sendError(res, 'userId is required', 400);
+      return;
+    }
+
+    // Verify the task is a team task
+    const task = await prisma.task.findUnique({ where: { id: taskId } });
+    if (!task) {
+      sendError(res, 'Task not found', 404);
+      return;
+    }
+    if (task.type !== 'TEAM') {
+      sendError(res, 'Can only add members to team tasks', 400);
+      return;
+    }
+
+    const assignment = await AdminService.addTaskAssignment(taskId, userId);
+    sendSuccess(res, assignment, 201);
+  } catch (error: any) {
+    if (error?.code === 'P2002') {
+      sendError(res, 'User is already assigned to this task', 409);
+      return;
+    }
+    sendError(res, 'Failed to add member');
+  }
+}
+
+export async function removeTaskMember(req: Request, res: Response) {
+  try {
+    const { taskId, userId } = req.params;
+    await AdminService.removeTaskAssignment(taskId, userId);
+    sendSuccess(res, { message: 'Member removed' });
+  } catch {
+    sendError(res, 'Failed to remove member');
   }
 }
 
@@ -179,6 +230,26 @@ export async function rejectSubmission(req: Request, res: Response) {
     sendSuccess(res, {});
   } catch {
     sendError(res, 'Failed to reject submission');
+  }
+}
+
+export async function approveTeamSubmission(req: Request, res: Response) {
+  try {
+    const { taskId } = req.params;
+    await AdminService.approveTeamSubmission(taskId);
+    sendSuccess(res, {});
+  } catch {
+    sendError(res, 'Failed to approve team submission');
+  }
+}
+
+export async function rejectTeamSubmission(req: Request, res: Response) {
+  try {
+    const { taskId } = req.params;
+    await AdminService.rejectTeamSubmission(taskId);
+    sendSuccess(res, {});
+  } catch {
+    sendError(res, 'Failed to reject team submission');
   }
 }
 

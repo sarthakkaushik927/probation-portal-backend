@@ -10,6 +10,7 @@ router.use(requireAdmin);
 router.get('/dashboard', AdminController.getDashboard);
 
 router.get('/users', AdminController.getUsers);
+router.get('/users/search', AdminController.searchUsers);
 router.get('/users/:userId', AdminController.getUser);
 router.patch('/users/:userId/domain', AdminController.updateDomain);
 router.delete('/users/:userId', AdminController.deleteUser);
@@ -17,11 +18,17 @@ router.delete('/users/:userId', AdminController.deleteUser);
 router.get('/tasks', AdminController.getTasks);
 router.post('/tasks', AdminController.createTask);
 router.patch('/tasks/:taskId', AdminController.updateTask);
+router.post('/tasks/:taskId/members', AdminController.addTaskMember);
+router.delete('/tasks/:taskId/members/:userId', AdminController.removeTaskMember);
 
 router.get('/submissions', AdminController.getSubmissions);
 router.get('/submissions/:submissionId', AdminController.getSubmission);
 router.patch('/submissions/:submissionId/approve', AdminController.approveSubmission);
 router.patch('/submissions/:submissionId/reject', AdminController.rejectSubmission);
+
+// Team submission review
+router.patch('/team-submissions/:taskId/approve', AdminController.approveTeamSubmission);
+router.patch('/team-submissions/:taskId/reject', AdminController.rejectTeamSubmission);
 
 router.get('/attendance', AdminController.getAttendanceUsers);
 router.post('/attendance', AdminController.saveAttendance);
